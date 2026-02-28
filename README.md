@@ -73,19 +73,48 @@ Each item in the specs array can be one of:
 
 ## API
 
-### `grabFields(source, specs)`
+### `grabFields(source, specs, options?)`
 
 | Param | Type | Description |
 |-------|------|-------------|
 | `source` | `Record<string, unknown>` | The source object to extract fields from |
 | `specs` | `FieldSpec[]` | Array of field specifications |
+| `options` | `GrabFieldsOptions` | Optional configuration |
 
 Returns a new `Record<string, unknown>` with only the specified fields.
+
+### Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `onMissing` | `'throw' \| 'skip' \| 'undefined'` | `'throw'` | What to do when a source field doesn't exist |
+
+- **`'throw'`** (default) — Throws a `FieldGrabberError` with a message identifying the missing field and the spec that referenced it. Transform errors are also wrapped with spec context.
+- **`'skip'`** — Omits the field from the result entirely.
+- **`'undefined'`** — Includes the field in the result with `undefined` as the value.
+
+```typescript
+// Strict (default) — throws if 'name' is missing
+grabFields(data, ['name', 'email']);
+
+// Lenient — missing fields become undefined
+grabFields(data, ['name', 'email'], { onMissing: 'undefined' });
+
+// Skip — missing fields are omitted from the result
+grabFields(data, ['name', 'email'], { onMissing: 'skip' });
+```
 
 ### Types
 
 ```typescript
-import type { FieldSpec, TransformFn, NestedSpec, SourceObject } from 'field-grabber';
+import type {
+  FieldSpec,
+  TransformFn,
+  NestedSpec,
+  SourceObject,
+  GrabFieldsOptions,
+  OnMissing,
+} from 'field-grabber';
 ```
 
 ## License

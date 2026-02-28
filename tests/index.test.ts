@@ -22,10 +22,6 @@ describe('grabFields', () => {
       expect(grabFields(source, ['handle'])).toEqual({ handle: 'toreilly317' });
     });
 
-    it('returns undefined for missing fields', () => {
-      expect(grabFields(source, ['nonexistent'])).toEqual({ nonexistent: undefined });
-    });
-
     it('copies multiple fields', () => {
       expect(grabFields(source, ['handle', 'company', 'bio'])).toEqual({
         handle: 'toreilly317',
@@ -51,11 +47,6 @@ describe('grabFields', () => {
       expect(result).toEqual({
         skills: ['eating', 'sleeping', 'drinking coffee', 'coding'],
       });
-    });
-
-    it('passes undefined to transform for missing fields', () => {
-      const result = grabFields({}, [['x', (v) => v ?? 'default']]);
-      expect(result).toEqual({ x: 'default' });
     });
   });
 
@@ -128,9 +119,99 @@ describe('grabFields', () => {
     it('returns empty object for empty specs', () => {
       expect(grabFields(source, [])).toEqual({});
     });
+  });
 
-    it('handles empty source object', () => {
-      expect(grabFields({}, ['handle'])).toEqual({ handle: undefined });
+  describe('onMissing: throw (default)', () => {
+    it('throws on missing string field', () => {
+      expect(() => grabFields({}, ['handle'])).toThrow(
+        "Missing field 'handle' in source object (spec: 'handle')",
+      );
+    });
+
+    it('throws on missing rename source field', () => {
+      expect(() => grabFields({}, [['alias', 'handle']])).toThrow(
+        "Missing field 'handle' in source object (spec: ['alias', 'handle'])",
+      );
+    });
+
+    it('throws on missing transform field', () => {
+      expect(() => grabFields({}, [['skills', (v) => v]])).toThrow(
+        "Missing field 'skills' in source object (spec: ['skills', fn])",
+      );
+    });
+
+    it('throws on missing rename+transform source field', () => {
+      expect(() => grabFields({}, [['x', 'skills', (v) => v]])).toThrow(
+        "Missing field 'skills' in source object (spec: ['x', 'skills', fn])",
+      );
+    });
+
+    it('throws on missing field inside nested spec', () => {
+      expect(() =>
+        grabFields({}, [{ name: 'group', wantedFields: ['handle'] }]),
+      ).toThrow("Missing field 'handle' in source object (spec: 'handle')");
+    });
+
+    it('wraps transform errors with spec context', () => {
+      expect(() =>
+        grabFields(source, [
+          ['handle', () => { throw new Error('boom'); }],
+        ]),
+      ).toThrow("Transform failed for spec ['handle', fn]: boom");
+    });
+  });
+
+  describe('onMissing: undefined', () => {
+    it('returns undefined for missing fields', () => {
+      expect(grabFields({}, ['handle'], { onMissing: 'undefined' })).toEqual({
+        handle: undefined,
+      });
+    });
+
+    it('passes undefined to transform for missing fields', () => {
+      const result = grabFields({}, [['x', (v) => v ?? 'default']], {
+        onMissing: 'undefined',
+      });
+      expect(result).toEqual({ x: 'default' });
+    });
+  });
+
+  describe('onMissing: skip', () => {
+    it('omits missing fields from result', () => {
+      const result = grabFields({}, ['handle', 'company'], {
+        onMissing: 'skip',
+      });
+      expect(result).toEqual({});
+    });
+
+    it('includes fields that exist and skips those that do not', () => {
+      const result = grabFields(
+        { handle: 'test' },
+        ['handle', 'company'],
+        { onMissing: 'skip' },
+      );
+      expect(result).toEqual({ handle: 'test' });
+    });
+
+    it('skips missing rename source fields', () => {
+      const result = grabFields({}, [['alias', 'handle']], {
+        onMissing: 'skip',
+      });
+      expect(result).toEqual({});
+    });
+
+    it('skips missing transform fields', () => {
+      const result = grabFields({}, [['x', (v) => v]], {
+        onMissing: 'skip',
+      });
+      expect(result).toEqual({});
+    });
+
+    it('skips missing rename+transform fields', () => {
+      const result = grabFields({}, [['x', 'y', (v) => v]], {
+        onMissing: 'skip',
+      });
+      expect(result).toEqual({});
     });
   });
 
